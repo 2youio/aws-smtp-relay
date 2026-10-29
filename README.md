@@ -29,6 +29,7 @@ Pull requests and contributions are welcome!
     - [Recipients](#recipients)
   - [Region](#region)
   - [Credentials](#credentials)
+  - [Metrics](#metrics)
   - [Logging](#logging)
 - [Development](#development)
   - [Build](#build)
@@ -191,6 +192,8 @@ Usage of aws-smtp-relay:
         TLS key file
   -l string
         Allowed sender emails regular expression
+  -m string
+        HTTP listen address for /metrics and /healthz (off when empty)
   -n string
         SMTP service name (default "AWS SMTP Relay")
   -r string
@@ -379,6 +382,29 @@ security credentials for the IAM role are automatically retrieved:
 
 - [IAM Roles for Amazon EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html)
 - [IAM Roles for Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
+
+### Metrics
+
+To serve [Prometheus](https://prometheus.io/) metrics at `/metrics`, provide an
+HTTP listen address with the `-m addr` option or the `METRICS_ADDRESS`
+environment variable. The same address serves `/healthz`, which shows only that
+the process runs:
+
+```sh
+aws-smtp-relay -m :9090
+```
+
+| Metric                                 | Type      | Description                                                      |
+| -------------------------------------- | --------- | ---------------------------------------------------------------- |
+| `aws_smtp_relay_messages_total`        | counter   | Messages by `result`: `sent`, `denied` (by a filter) or `error`  |
+| `aws_smtp_relay_auth_failures_total`   | counter   | Failed SMTP authentications                                      |
+| `aws_smtp_relay_send_duration_seconds` | histogram | Time to handle a message, with the API request when there is one |
+
+The relay sends a message with some denied recipients to the other
+recipients, but counts it as `denied`.
+
+The relay also serves the Go runtime and process metrics of the Prometheus
+client. By default, it serves no metrics.
 
 ### Logging
 
