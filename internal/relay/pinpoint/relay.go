@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"regexp"
+	"time"
 
 	"github.com/KamorionLabs/aws-smtp-relay/internal/relay"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -22,6 +23,7 @@ type Client struct {
 	setName         *string
 	allowFromRegExp *regexp.Regexp
 	denyToRegExp    *regexp.Regexp
+	sendTimeout     time.Duration
 }
 
 // Send uses the given Pinpoint API to send email data
@@ -41,7 +43,9 @@ func (c Client) Send(
 		relay.Log(origin, from, deniedRecipients, err)
 	}
 	if len(allowedRecipients) > 0 {
-		_, err := c.pinpointClient.SendEmail(context.Background(), &pinpointemail.SendEmailInput{
+		ctx, cancel := relay.SendContext(c.sendTimeout)
+		defer cancel()
+		_, err := c.pinpointClient.SendEmail(ctx, &pinpointemail.SendEmailInput{
 			ConfigurationSetName: c.setName,
 			FromEmailAddress:     &from,
 			Destination: &pinpointemailtypes.Destination{
@@ -66,6 +70,7 @@ func New(
 	configurationSetName *string,
 	allowFromRegExp *regexp.Regexp,
 	denyToRegExp *regexp.Regexp,
+	sendTimeout time.Duration,
 ) Client {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
@@ -76,5 +81,6 @@ func New(
 		setName:         configurationSetName,
 		allowFromRegExp: allowFromRegExp,
 		denyToRegExp:    denyToRegExp,
+		sendTimeout:     sendTimeout,
 	}
 }

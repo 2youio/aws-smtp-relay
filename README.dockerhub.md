@@ -154,6 +154,7 @@ docker run -d \
 | `-c` | TLS cert file | - |
 | `-k` | TLS key file | - |
 | `-m` | HTTP listen address for `/metrics` and `/healthz` (also `METRICS_ADDRESS`) | off |
+| `-w` | Time limit of one API send, retries included; `0` for no limit (also `SEND_TIMEOUT`) | `30s` |
 
 ## 📚 Environment Variables
 
