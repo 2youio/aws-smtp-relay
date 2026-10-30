@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/KamorionLabs/aws-smtp-relay/internal/relay"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
@@ -253,7 +254,7 @@ func TestNew(t *testing.T) {
 		FromArn:       &fromArn,
 		ReturnPathArn: &returnPathArn,
 	}
-	client := New(&setName, allowFromRegExp, denyToRegExp, arns)
+	client := New(&setName, allowFromRegExp, denyToRegExp, arns, 5*time.Second)
 	_, ok := interface{}(client).(relay.Client)
 	if !ok {
 		t.Error("Unexpected: client is not a relay.Client")
@@ -267,6 +268,9 @@ func TestNew(t *testing.T) {
 	if client.denyToRegExp != denyToRegExp {
 		t.Errorf("Unexpected denyToRegExp: %s", client.denyToRegExp)
 	}
+	if client.sendTimeout != 5*time.Second {
+		t.Errorf("Unexpected sendTimeout: %v", client.sendTimeout)
+	}
 	if client.arns != arns {
 		t.Errorf("Unexpected arns: %v", client.arns)
 	}
@@ -279,4 +283,39 @@ func TestNew(t *testing.T) {
 	if client.arns.ReturnPathArn != &returnPathArn {
 		t.Errorf("Unexpected returnPathArn: %s", *client.arns.ReturnPathArn)
 	}
+}
+
+type slowSESClient struct{}
+
+func (m *slowSESClient) SendEmail(ctx context.Context, input *sesv2.SendEmailInput, opts ...func(*sesv2.Options)) (
+	*sesv2.SendEmailOutput,
+	error,
+) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestSendStopsAtSendTimeout(t *testing.T) {
+	c := Client{sesClient: &slowSESClient{}, sendTimeout: 50 * time.Millisecond}
+	origin := &net.TCPAddr{IP: net.ParseIP("127.0.0.1")}
+	start := time.Now()
+	err := sendQuietly(c, origin)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("want context.DeadlineExceeded, got %v", err)
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("Send took %v", d)
+	}
+}
+
+// sendQuietly sends one message with c and drops its log output.
+func sendQuietly(c Client, origin net.Addr) error {
+	outReader, outWriter, _ := os.Pipe()
+	originalOut := os.Stdout
+	os.Stdout = outWriter
+	err := c.Send(origin, "alice@example.org", []string{"bob@example.org"}, []byte("TEST"))
+	os.Stdout = originalOut
+	outWriter.Close()
+	io.ReadAll(outReader)
+	return err
 }

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"strconv"
+	"time"
 	"log"
 
 	"github.com/KamorionLabs/aws-smtp-relay/internal/auth"
@@ -34,6 +35,7 @@ var (
 	sourceArn     = flag.String("o", LookupEnvOrString("SES_SOURCE_ARN", ""), "Amazon SES SourceArn")
 	fromArn       = flag.String("f", LookupEnvOrString("SES_FROM_ARN", ""), "Amazon SES FromArn")
 	returnPathArn = flag.String("p", LookupEnvOrString("SES_RETURN_PATH_ARN", ""), "Amazon SES ReturnPathArn")
+	sendTimeout   = flag.Duration("w", LookupEnvOrDuration("SEND_TIMEOUT", 30*time.Second), "Time limit of one API send, retries included (0 for no limit)")
 )
 
 var ipMap map[string]bool
@@ -124,9 +126,9 @@ func configure() error {
 	}
 	switch *relayAPI {
 	case "pinpoint":
-		relayClient = pinpointrelay.New(setName, allowFromRegExp, denyToRegExp)
+		relayClient = pinpointrelay.New(setName, allowFromRegExp, denyToRegExp, *sendTimeout)
 	case "ses":
-		relayClient = sesrelay.New(setName, allowFromRegExp, denyToRegExp, arns)
+		relayClient = sesrelay.New(setName, allowFromRegExp, denyToRegExp, arns, *sendTimeout)
 	default:
 		return errors.New("Invalid relay API: " + *relayAPI)
 	}
@@ -154,6 +156,17 @@ func LookupEnvOrInt(key string, defaultVal int) int {
 		v, err := strconv.Atoi(val)
 		if err != nil {
 			log.Fatalf("LookupEnvOrInt[%s]: %v", key, err)
+		}
+		return v
+	}
+	return defaultVal
+}
+
+func LookupEnvOrDuration(key string, defaultVal time.Duration) time.Duration {
+	if val, ok := os.LookupEnv(key); ok {
+		v, err := time.ParseDuration(val)
+		if err != nil {
+			log.Fatalf("LookupEnvOrDuration[%s]: %v", key, err)
 		}
 		return v
 	}

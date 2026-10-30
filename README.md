@@ -29,6 +29,7 @@ Pull requests and contributions are welcome!
     - [Recipients](#recipients)
   - [Region](#region)
   - [Credentials](#credentials)
+  - [Send timeout](#send-timeout)
   - [Logging](#logging)
 - [Development](#development)
   - [Build](#build)
@@ -199,6 +200,8 @@ Usage of aws-smtp-relay:
   -t    Listen for incoming TLS connections only
   -u string
         Authentication username
+  -w duration
+        Time limit of one API send, retries included (0 for no limit) (default 30s)
 ```
 
 ### Authentication
@@ -379,6 +382,21 @@ security credentials for the IAM role are automatically retrieved:
 
 - [IAM Roles for Amazon EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html)
 - [IAM Roles for Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
+
+### Send timeout
+
+The relay stops an API send after 30 seconds, retries included, and returns
+an error to the SMTP client. Without a limit, a send whose API response
+stalls holds the SMTP session open. To change the limit, provide a
+[duration](https://pkg.go.dev/time#ParseDuration) via the `-w duration` option
+or the `SEND_TIMEOUT` environment variable, for example `10s`. `0` sets no
+limit:
+
+```sh
+aws-smtp-relay -w 10s
+```
+
+Keep the limit below the time that the SMTP client waits for a reply.
 
 ### Logging
 

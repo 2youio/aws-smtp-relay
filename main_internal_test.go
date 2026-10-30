@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	pinpointrelay "github.com/KamorionLabs/aws-smtp-relay/internal/relay/pinpoint"
 	sesrelay "github.com/KamorionLabs/aws-smtp-relay/internal/relay/ses"
@@ -440,5 +441,15 @@ func TestServerWithTLSWithPassphrase(t *testing.T) {
 	}
 	if srv.TLSConfig == nil {
 		t.Errorf("Unexpected empty TLS config.")
+	}
+}
+
+func TestLookupEnvOrDuration(t *testing.T) {
+	t.Setenv("TEST_DURATION", "5s")
+	if got := LookupEnvOrDuration("TEST_DURATION", time.Second); got != 5*time.Second {
+		t.Errorf("got %v, want 5s", got)
+	}
+	if got := LookupEnvOrDuration("TEST_DURATION_UNSET", time.Second); got != time.Second {
+		t.Errorf("got %v, want the default 1s", got)
 	}
 }
