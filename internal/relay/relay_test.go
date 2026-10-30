@@ -246,3 +246,16 @@ func TestFilterAddressesWithDeniedRecipients(t *testing.T) {
 		)
 	}
 }
+
+func TestSendContext(t *testing.T) {
+	ctx, cancel := SendContext(time.Minute)
+	defer cancel()
+	if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > time.Minute {
+		t.Errorf("want a deadline within a minute, got %v, %v", deadline, ok)
+	}
+	ctx, cancel = SendContext(0)
+	defer cancel()
+	if _, ok := ctx.Deadline(); ok {
+		t.Error("want no deadline for timeout 0")
+	}
+}

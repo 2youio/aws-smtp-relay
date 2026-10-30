@@ -153,6 +153,7 @@ docker run -d \
 | `-t` | TLS connections only | `false` |
 | `-c` | TLS cert file | - |
 | `-k` | TLS key file | - |
+| `-w` | Time limit of one API send, retries included; `0` for no limit (also `SEND_TIMEOUT`) | `30s` |
 
 ## 📚 Environment Variables
 

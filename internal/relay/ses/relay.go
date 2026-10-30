@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"regexp"
+	"time"
 
 	"github.com/KamorionLabs/aws-smtp-relay/internal/relay"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -23,6 +24,7 @@ type Client struct {
 	allowFromRegExp *regexp.Regexp
 	denyToRegExp    *regexp.Regexp
 	arns            *relay.ARNs
+	sendTimeout     time.Duration
 }
 
 // Send uses the client SESEmailClient to send email data via SESv2 API
@@ -67,7 +69,9 @@ func (c Client) Send(
 				input.FeedbackForwardingEmailAddressIdentityArn = c.arns.ReturnPathArn
 			}
 		}
-		_, err := c.sesClient.SendEmail(context.Background(), input)
+		ctx, cancel := relay.SendContext(c.sendTimeout)
+		defer cancel()
+		_, err := c.sesClient.SendEmail(ctx, input)
 		relay.Log(origin, from, allowedRecipients, err)
 		if err != nil {
 			return err
@@ -82,6 +86,7 @@ func New(
 	allowFromRegExp *regexp.Regexp,
 	denyToRegExp *regexp.Regexp,
 	arns *relay.ARNs,
+	sendTimeout time.Duration,
 ) Client {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
@@ -93,5 +98,6 @@ func New(
 		allowFromRegExp: allowFromRegExp,
 		denyToRegExp:    denyToRegExp,
 		arns:            arns,
+		sendTimeout:     sendTimeout,
 	}
 }

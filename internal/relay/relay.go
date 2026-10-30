@@ -4,6 +4,7 @@ Package relay provides an interface to relay emails via Amazon SES/Pinpoint API.
 package relay
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -94,4 +95,13 @@ func FilterAddresses(
 		err = ErrDeniedRecipients
 	}
 	return
+}
+
+// SendContext returns the context for one API send: with the time limit
+// timeout, retries included, or with no limit when timeout is 0.
+func SendContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout > 0 {
+		return context.WithTimeout(context.Background(), timeout)
+	}
+	return context.WithCancel(context.Background())
 }

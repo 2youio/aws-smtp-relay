@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/KamorionLabs/aws-smtp-relay/internal/relay"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointemail"
@@ -244,7 +245,7 @@ func TestNew(t *testing.T) {
 	setName := ""
 	allowFromRegExp, _ := regexp.Compile(`^admin@example\.org$`)
 	denyToRegExp, _ := regexp.Compile(`^bob@example\.org$`)
-	client := New(&setName, allowFromRegExp, denyToRegExp)
+	client := New(&setName, allowFromRegExp, denyToRegExp, 5*time.Second)
 	_, ok := interface{}(client).(relay.Client)
 	if !ok {
 		t.Error("Unexpected: client is not a relay.Client")
@@ -254,6 +255,9 @@ func TestNew(t *testing.T) {
 	}
 	if client.allowFromRegExp != allowFromRegExp {
 		t.Errorf("Unexpected allowFromRegExp: %s", client.allowFromRegExp)
+	}
+	if client.sendTimeout != 5*time.Second {
+		t.Errorf("Unexpected sendTimeout: %v", client.sendTimeout)
 	}
 	if client.denyToRegExp != denyToRegExp {
 		t.Errorf("Unexpected denyToRegExp: %s", client.denyToRegExp)
